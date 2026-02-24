@@ -1,0 +1,59 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+wheels/
+pip-wheel-metadata/
+*.spec.bak
+
+# ── Environnements virtuels ────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# ── uv ────────────────────────────────────────────────────────────────────────
+.uv/
+uv.lock
+
+# ── Données — ne jamais versionner les fichiers métier ────────────────────────
+data/input/
+data/processed/
+data/output/
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Ressources sensibles (images internes) ────────────────────────────────────
+resources/images/
+
+# ── Build PyInstaller ─────────────────────────────────────────────────────────
+dist/
+build/
+*.spec
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Fichiers temporaires Office ───────────────────────────────────────────────
+~$*.docx
+~$*.xlsx
+*.tmp

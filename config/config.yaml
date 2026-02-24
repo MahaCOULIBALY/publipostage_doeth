@@ -1,0 +1,36 @@
+# config.yaml
+
+# Chemins des dossiers
+paths:
+  base_dir: D:\Data\01_Projects\Active\publipostage_doeth # Sera remplacé par le chemin absolu lors du chargement
+  data_dir: ${paths.base_dir}/data
+  resources_dir: ${paths.base_dir}/resources
+  logs_dir: ${paths.base_dir}/logs
+  input_dir: ${paths.data_dir}/input
+  processed_dir: ${paths.data_dir}/processed
+  output_dir: ${paths.data_dir}/output
+
+# Ressources
+resources:
+  logo_path: ${paths.resources_dir}/images/Entete_GI.png
+  signature_path: ${paths.resources_dir}/images/RL_LG.png
+
+# Paramètres par défaut
+defaults:
+  input_filename: "Liste des BOETH par RGP CLI avec adresses V2.xlsx"
+  excel_sheet: "Liste des BOETH par RGP CLI ave"
+  csv_separator: ";"
+  date_format: "%d/%m/%Y"
+
+# Paramètres du document
+document:
+  font_size: 10
+  table_font_size: 8
+  paragraph_spacing: 1
+  margins: 1.5  # en cm
+
+# Informations représentant légal
+representant:
+  nom: "Loïc GALLERAND"
+  adresse: "233 rue de Châteaugiron à Rennes (35000)"
+  siret: "49342093900057"
