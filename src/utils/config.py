@@ -6,7 +6,6 @@ avec la résolution des références et des valeurs environnementales.
 """
 
 import logging
-import os
 import platform
 import re
 from pathlib import Path
@@ -25,23 +24,16 @@ class Config:
         Args:
             config_path: Chemin vers le fichier de configuration. Si None, utilise le chemin par défaut.
         """
+        base_dir = Path(__file__).parent.parent.parent
         if config_path is None:
-            # Chemin par défaut
-            base_dir = Path(__file__).parent.parent.parent
-            config_path = os.path.join(base_dir, 'config', 'config.yaml')
+            config_path = str(base_dir / 'config' / 'config.yaml')
 
-        # Charger la configuration
         with open(config_path, 'r', encoding='utf-8') as f:
             yaml_content = f.read()
 
-            # Remplacer __BASE_DIR__ par le chemin absolu
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            yaml_content = yaml_content.replace('__BASE_DIR__', base_dir.replace('\\', '/'))
-
-            # Charger le YAML
-            self.config = yaml.safe_load(yaml_content)
-
-        # Résoudre les références de type ${...}
+        base_dir_str = str(base_dir).replace('\\', '/')
+        yaml_content = yaml_content.replace('__BASE_DIR__', base_dir_str)
+        self.config = yaml.safe_load(yaml_content)
         self._resolve_references(self.config)
 
     def get_environment(self) -> Tuple[str, Path]:
@@ -77,35 +69,19 @@ class Config:
         }.get(env_name, logging.INFO)
 
     def _resolve_references(self, config_dict: Dict[str, Any]) -> None:
-        """
-        Résout les références dans la configuration (comme ${paths.base_dir}).
-
-        Args:
-            config_dict: Dictionnaire de configuration à traiter
-        """
+        """Résout les références ${...} dans la configuration."""
         for key, value in config_dict.items():
             if isinstance(value, dict):
                 self._resolve_references(value)
             elif isinstance(value, str):
-                # Rechercher et remplacer les références ${...}
                 matches = re.findall(r'\${([\w.]+)}', value)
                 for match in matches:
-                    # Obtenir la valeur référencée
                     ref_value = self._get_nested_value(match)
                     if ref_value is not None:
-                        # Remplacer la référence par sa valeur
                         config_dict[key] = value.replace(f'${{{match}}}', str(ref_value))
 
     def _get_nested_value(self, path: str) -> Optional[Any]:
-        """
-        Récupère une valeur imbriquée à partir d'un chemin comme 'paths.base_dir'.
-
-        Args:
-            path: Chemin d'accès à la valeur dans la configuration
-
-        Returns:
-            Any: Valeur trouvée ou None si le chemin n'existe pas
-        """
+        """Récupère une valeur imbriquée à partir d'un chemin comme 'paths.base_dir'."""
         parts = path.split('.')
         current = self.config
 
@@ -118,28 +94,34 @@ class Config:
         return current
 
     def get(self, path: str, default: Any = None) -> Any:
-        """
-        Récupère une valeur de configuration par son chemin.
-
-        Args:
-            path: Chemin d'accès à la valeur dans la configuration
-            default: Valeur par défaut si le chemin n'existe pas
-
-        Returns:
-            Any: Valeur de configuration ou valeur par défaut
-        """
+        """Récupère une valeur de configuration par son chemin."""
         value = self._get_nested_value(path)
         return value if value is not None else default
 
 
-# Instance globale de la configuration
-config = Config()
+# ── Singleton lazy — chargé à la première utilisation ou après init_config() ──
+_config: Optional[Config] = None
 
 
-# Fonction d'accès pour importer directement des valeurs
+def init_config(path: Optional[str] = None) -> None:
+    """
+    Initialise (ou réinitialise) la configuration globale.
+
+    Doit être appelé avant tout get() si un chemin personnalisé est fourni via --config.
+    Sans appel explicite, get() initialise automatiquement avec la config par défaut.
+
+    Args:
+        path: Chemin vers un fichier de configuration personnalisé, ou None pour la config par défaut.
+    """
+    global _config
+    _config = Config(config_path=path)
+
+
 def get(path: str, default: Any = None) -> Any:
     """
     Fonction utilitaire pour accéder à la configuration globale.
+
+    Initialise la config par défaut si elle n'a pas encore été chargée.
 
     Args:
         path: Chemin d'accès à la valeur dans la configuration
@@ -148,4 +130,7 @@ def get(path: str, default: Any = None) -> Any:
     Returns:
         Any: Valeur de configuration ou valeur par défaut
     """
-    return config.get(path, default)
+    global _config
+    if _config is None:
+        _config = Config()
+    return _config.get(path, default)

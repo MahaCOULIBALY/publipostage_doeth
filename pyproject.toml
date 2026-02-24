@@ -1,35 +1,77 @@
 [tool.poetry]
 name = "publipostage-doeth"
-version = "0.1.0"
+version = "0.2.0"
 description = "Génération d'attestations DOETH à partir de fichiers Excel"
-authors = ["Votre Nom <votre.email@example.com>"]
+authors = ["Groupe Interaction <contact@groupe-interaction.fr>"]
 readme = "README.md"
+# main.py et gui.py sont à la racine du projet (layout plat) ;
+# seul le package src/ est déclaré pour l'installation.
+packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-pandas = "^2.0.0"
-python-docx = "^0.8.11"
+
+# Traitement données
+pandas    = "^2.2"
+numpy     = "^2.0"
+openpyxl  = "^3.1"   # lecture .xlsx via pd.read_excel
+xlrd      = "^2.0"   # lecture .xls via pd.read_excel
+
+# Génération Word
+python-docx = "^1.1"
+
+# Configuration
 pyyaml = "^6.0"
-openpyxl = "^3.1.2"
-xlrd = "^2.0.1"
+
+# Logging coloré console
+colorama = "^0.4.6"
+
+# Conversion PDF (Windows uniquement — automation COM Word)
+pywin32 = {version = "^308", markers = "sys_platform == 'win32'"}
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.3.1"
-black = "^23.3.0"
-flake8 = "^6.0.0"
-isort = "^5.12.0"
+pytest   = "^8.0"
+black    = "^24.0"
+isort    = "^5.13"
+ruff     = "^0.4"
+mypy     = "^1.10"
+pandas-stubs = "^2.2"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-publipostage = "publipostage_doeth.main:main"
+# Exécution via Poetry : `poetry run publipostage` / `poetry run publipostage-gui`
+# Requiert d'être lancé depuis la racine du projet (main.py et gui.py à la racine).
+publipostage     = "main:main"
+publipostage-gui = "gui:main"
+
+# ── Formatage ──────────────────────────────────────────────────────────────────
 
 [tool.black]
-line-length = 88
-target-version = ["py38"]
+line-length    = 88
+target-version = ["py312"]
 
 [tool.isort]
-profile = "black"
+profile     = "black"
 line_length = 88
+
+# ── Lint (ruff remplace flake8) ────────────────────────────────────────────────
+
+[tool.ruff]
+line-length    = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]   # longueur de ligne gérée par black
+
+# ── Typage ─────────────────────────────────────────────────────────────────────
+
+[tool.mypy]
+python_version      = "3.12"
+strict              = false
+warn_return_any     = true
+warn_unused_ignores = true
+ignore_missing_imports = true

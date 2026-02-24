@@ -191,30 +191,39 @@ logs/
 ```
 publipostage_doeth/
 │
-├── config.yaml              # Configuration centralisee
+├── src/
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── config.py          # Chargement et resolution config.yaml
+│   │   ├── error_handling.py  # Decorateurs et handlers d'erreurs
+│   │   └── logger.py          # Logger colore + rotation fichier
+│   ├── __init__.py
+│   ├── data_processor.py      # Etapes 1-6 : Excel -> CSV propre
+│   ├── document_generator.py  # Generation Word, enum OutputFormat
+│   └── pdf_converter.py       # Conversion DOCX->PDF via COM Word
 │
-├── data/                    # <- ignore par Git
-│   ├── input/               # Fichiers Excel sources
-│   ├── processed/           # CSV intermediaires horodates
-│   └── output/              # Attestations generees
+├── data/                      # <- ignore par Git
+│   ├── input/                 # Fichiers Excel sources
+│   ├── processed/             # CSV intermediaires horodates
+│   ├── backup/                # <- ignore par Git
+│   └── output/                # Attestations generees
 │
-├── resources/               # <- ignore par Git
+├── resources/                 # <- ignore par Git
 │   └── images/
-│       ├── Entete_GI.png    # Logo en-tete
-│       └── RL_LG.png        # Signature representant legal
+│       ├── Entete_GI.png      # Logo en-tete
+│       └── RL_LG.png          # Signature representant legal
 │
-├── logs/                    # <- ignore par Git
+├── logs/                      # <- ignore par Git
 │
-├── data_processor.py        # Etapes 1-6 : Excel -> CSV propre
-├── document_generator.py    # Generation Word, enum OutputFormat
-├── pdf_converter.py         # Conversion DOCX->PDF via COM Word
-├── config.py                # Chargement et resolution config.yaml
-├── logger.py                # Logger colore + rotation fichier
-├── error_handling.py        # Decorateurs et handlers d'erreurs
-├── gui.py                   # Interface graphique Tkinter
-├── main.py                  # Point d'entree CLI
+├── config.yaml                # Configuration centralisee
+├── gui.py                     # Interface graphique Tkinter
+├── main.py                    # Point d'entree CLI
+├── build_app.py               # Script de packaging PyInstaller
+├── publipostage_doeth.spec    # Spec PyInstaller
+├── analyse_nb.ipynb           # Notebook d'analyse exploratoire
 │
 ├── pyproject.toml
+├── uv.lock
 ├── requirements.txt
 ├── .gitignore
 └── README.md
@@ -224,11 +233,11 @@ publipostage_doeth/
 
 | Module | Role |
 |---|---|
-| `config.py` | Config - chargement unique au demarrage, resolution des variables |
+| `src/utils/config.py` | Config - chargement unique au demarrage, resolution des variables |
 | `main.py` | Orchestrateur - sequence les etapes, gere les parametres CLI |
-| `data_processor.py` | Processor - logique de transformation des donnees |
-| `document_generator.py` | Processor - creation des documents Word |
-| `pdf_converter.py` | Processor - conversion batch DOCX->PDF, instance COM unique |
+| `src/data_processor.py` | Processor - logique de transformation des donnees |
+| `src/document_generator.py` | Processor - creation des documents Word |
+| `src/pdf_converter.py` | Processor - conversion batch DOCX->PDF, instance COM unique |
 
 ---
 
