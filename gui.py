@@ -34,7 +34,8 @@ class RedirectText:
     def write(self, string):
         self.queue.put(string)
         if self.update_timer is None:
-            self.update_timer = self.text_widget.after(100, self.update_text_widget)
+            self.update_timer = self.text_widget.after(
+                100, self.update_text_widget)
 
     def update_text_widget(self):
         self.update_timer = None
@@ -100,12 +101,15 @@ class PublipostageGUI:
             style.theme_use('clam')
 
         style.configure('TFrame', background=self.bg_color)
-        style.configure('TLabel', background=self.bg_color, foreground=self.text_color, font=('Segoe UI', 10))
-        style.configure('TLabelframe', background=self.bg_color, foreground=self.text_color)
+        style.configure('TLabel', background=self.bg_color,
+                        foreground=self.text_color, font=('Segoe UI', 10))
+        style.configure('TLabelframe', background=self.bg_color,
+                        foreground=self.text_color)
         style.configure('TLabelframe.Label', background=self.bg_color, foreground=self.primary_color,
                         font=('Segoe UI', 11, 'bold'))
         style.configure('TEntry', padding=5)
-        style.configure('TCheckbutton', background=self.bg_color, foreground=self.text_color, font=('Segoe UI', 10))
+        style.configure('TCheckbutton', background=self.bg_color,
+                        foreground=self.text_color, font=('Segoe UI', 10))
 
         # Boutons avec styles spécifiques
         style.configure('Start.TButton', background=self.start_color, foreground="white", font=('Segoe UI', 10, 'bold'),
@@ -132,13 +136,17 @@ class PublipostageGUI:
             get('paths.input_dir', './data/input'),
             get('defaults.input_filename', 'donnees.xlsx')
         ))
-        self.sheet_name_var = tk.StringVar(value=get('defaults.excel_sheet', 'Feuil1'))
-        self.output_dir_var = tk.StringVar(value=get('paths.output_dir', './data/output'))
+        self.sheet_name_var = tk.StringVar(
+            value=get('defaults.excel_sheet', 'Feuil1'))
+        self.output_dir_var = tk.StringVar(
+            value=get('paths.output_dir', './data/output'))
         self.csv_path_var = tk.StringVar()
         self.logo_path_var = tk.StringVar(value=get('resources.logo_path', ''))
-        self.signature_path_var = tk.StringVar(value=get('resources.signature_path', ''))
+        self.signature_path_var = tk.StringVar(
+            value=get('resources.signature_path', ''))
         self.skip_processing_var = tk.BooleanVar(value=False)
         self.debug_var = tk.BooleanVar(value=False)
+        self.output_format_var = tk.StringVar(value="docx")
 
         # Etat de traitement
         self.processing = False
@@ -158,7 +166,8 @@ class PublipostageGUI:
         # En-tête
         header_frame = ttk.Frame(main_frame, style="TFrame")
         header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 15))
-        title_label = ttk.Label(header_frame, text="Publipostage DOETH", font=("Segoe UI", 20, "bold"))
+        title_label = ttk.Label(
+            header_frame, text="Publipostage DOETH", font=("Segoe UI", 20, "bold"))
         title_label.grid(row=0, column=0, sticky="w")
         description_label = ttk.Label(header_frame,
                                       text="Génération d'attestations pour travailleurs en situation de handicap",
@@ -170,25 +179,31 @@ class PublipostageGUI:
         separator.grid(row=1, column=0, sticky="ew", pady=10)
 
         # Section Paramètres
-        params_frame = ttk.LabelFrame(main_frame, text="Paramètres", padding="15", style="TLabelframe")
+        params_frame = ttk.LabelFrame(
+            main_frame, text="Paramètres", padding="15", style="TLabelframe")
         params_frame.grid(row=2, column=0, sticky="ew", pady=10)
         params_frame.columnconfigure(1, weight=1)
 
         # Paramètres principaux
-        ttk.Label(params_frame, text="Fichier Excel:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        ttk.Label(params_frame, text="Fichier Excel:").grid(
+            row=0, column=0, sticky="w", padx=5, pady=5)
         input_entry = ttk.Entry(params_frame, textvariable=self.input_file_var)
         input_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
         ttk.Button(params_frame, text="Parcourir...", command=self.browse_input_file).grid(row=0, column=2, padx=5,
                                                                                            pady=5)
 
-        ttk.Label(params_frame, text="Feuille Excel:").grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        sheet_entry = ttk.Entry(params_frame, textvariable=self.sheet_name_var, width=20)
+        ttk.Label(params_frame, text="Feuille Excel:").grid(
+            row=1, column=0, sticky="w", padx=5, pady=5)
+        sheet_entry = ttk.Entry(
+            params_frame, textvariable=self.sheet_name_var, width=20)
         sheet_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
         ttk.Label(params_frame, text="(laisser vide pour la première)", font=("Segoe UI", 9), foreground="gray") \
             .grid(row=1, column=2, sticky="w", padx=5, pady=5)
 
-        ttk.Label(params_frame, text="Dossier de sortie:").grid(row=2, column=0, sticky="w", padx=5, pady=5)
-        output_entry = ttk.Entry(params_frame, textvariable=self.output_dir_var)
+        ttk.Label(params_frame, text="Dossier de sortie:").grid(
+            row=2, column=0, sticky="w", padx=5, pady=5)
+        output_entry = ttk.Entry(
+            params_frame, textvariable=self.output_dir_var)
         output_entry.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
         ttk.Button(params_frame, text="Parcourir...", command=self.browse_output_dir).grid(row=2, column=2, padx=5,
                                                                                            pady=5)
@@ -196,58 +211,80 @@ class PublipostageGUI:
         # Paramètres Logo et Signature
         resources_frame = ttk.LabelFrame(params_frame, text="Ressources des attestations", padding="15",
                                          style="TLabelframe")
-        resources_frame.grid(row=3, column=0, columnspan=3, sticky="ew", padx=5, pady=(15, 5))
+        resources_frame.grid(row=3, column=0, columnspan=3,
+                             sticky="ew", padx=5, pady=(15, 5))
         resources_frame.columnconfigure(1, weight=1)
 
-        ttk.Label(resources_frame, text="Logo:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
-        logo_entry = ttk.Entry(resources_frame, textvariable=self.logo_path_var)
+        ttk.Label(resources_frame, text="Logo:").grid(
+            row=0, column=0, sticky="w", padx=5, pady=5)
+        logo_entry = ttk.Entry(
+            resources_frame, textvariable=self.logo_path_var)
         logo_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
         ttk.Button(resources_frame, text="Parcourir...", command=self.browse_logo_file).grid(row=0, column=2, padx=5,
                                                                                              pady=5)
 
-        ttk.Label(resources_frame, text="Signature:").grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        signature_entry = ttk.Entry(resources_frame, textvariable=self.signature_path_var)
+        ttk.Label(resources_frame, text="Signature:").grid(
+            row=1, column=0, sticky="w", padx=5, pady=5)
+        signature_entry = ttk.Entry(
+            resources_frame, textvariable=self.signature_path_var)
         signature_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
         ttk.Button(resources_frame, text="Parcourir...", command=self.browse_signature_file).grid(row=1, column=2,
                                                                                                   padx=5, pady=5)
 
         # Options avancées
-        advanced_frame = ttk.LabelFrame(params_frame, text="Options avancées", padding="15", style="TLabelframe")
-        advanced_frame.grid(row=4, column=0, columnspan=3, sticky="ew", padx=5, pady=15)
+        advanced_frame = ttk.LabelFrame(
+            params_frame, text="Options avancées", padding="15", style="TLabelframe")
+        advanced_frame.grid(row=4, column=0, columnspan=3,
+                            sticky="ew", padx=5, pady=15)
         advanced_frame.columnconfigure(1, weight=1)
         ttk.Checkbutton(advanced_frame, text="Ignorer le traitement Excel",
                         variable=self.skip_processing_var, command=self.toggle_csv_path) \
             .grid(row=0, column=0, columnspan=2, sticky="w", pady=5)
-        ttk.Label(advanced_frame, text="Fichier CSV:").grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        self.csv_entry = ttk.Entry(advanced_frame, textvariable=self.csv_path_var, state="disabled")
+        ttk.Label(advanced_frame, text="Fichier CSV:").grid(
+            row=1, column=0, sticky="w", padx=5, pady=5)
+        self.csv_entry = ttk.Entry(
+            advanced_frame, textvariable=self.csv_path_var, state="disabled")
         self.csv_entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
         self.csv_button = ttk.Button(advanced_frame, text="Parcourir...", command=self.browse_csv_file,
                                      state="disabled")
         self.csv_button.grid(row=1, column=2, padx=5, pady=5)
         ttk.Checkbutton(advanced_frame, text="Mode debug (logs détaillés)", variable=self.debug_var) \
             .grid(row=2, column=0, columnspan=2, sticky="w", pady=5)
+        # Format de sortie
+        ttk.Label(advanced_frame, text="Format de sortie :").grid(
+            row=3, column=0, sticky="w", padx=5, pady=5)
+        format_frame = ttk.Frame(advanced_frame)
+        format_frame.grid(row=3, column=1, columnspan=2,
+                          sticky="w", padx=5, pady=5)
+        for label, value in [("Word (.docx)", "docx"), ("PDF (.pdf)", "pdf"), ("Les deux", "both")]:
+            ttk.Radiobutton(format_frame, text=label, variable=self.output_format_var, value=value) \
+                .pack(side="left", padx=10)
 
         # Zone de détails des traitements (anciennement "Logs")
-        log_frame = ttk.LabelFrame(main_frame, text="Détails des traitements", padding="15", style="TLabelframe")
+        log_frame = ttk.LabelFrame(
+            main_frame, text="Détails des traitements", padding="15", style="TLabelframe")
         log_frame.grid(row=4, column=0, sticky="nsew", pady=10)
         main_frame.rowconfigure(4, weight=1)
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
-        self.log_text = tk.Text(log_frame, wrap=tk.WORD, font=('Consolas', 9), bg="white")
+        self.log_text = tk.Text(log_frame, wrap=tk.WORD,
+                                font=('Consolas', 9), bg="white")
         self.log_text.grid(row=0, column=0, sticky="nsew")
         self.log_text.tag_configure("gray", foreground="#707070")
         self.log_text.tag_configure("black", foreground="#000000")
         self.log_text.tag_configure("orange", foreground="#FF8C00")
         self.log_text.tag_configure("red", foreground="#FF0000")
         self.log_text.configure(state="disabled")
-        log_scrollbar = ttk.Scrollbar(log_frame, orient=tk.VERTICAL, command=self.log_text.yview)
+        log_scrollbar = ttk.Scrollbar(
+            log_frame, orient=tk.VERTICAL, command=self.log_text.yview)
         log_scrollbar.grid(row=0, column=1, sticky="ns")
         self.log_text.configure(yscrollcommand=log_scrollbar.set)
 
         # Barre d'état et de progression
         status_frame = ttk.Frame(main_frame, style="TFrame")
         status_frame.grid(row=5, column=0, sticky="ew", pady=(10, 15))
-        self.status_label = ttk.Label(status_frame, text="Prêt", font=("Segoe UI", 10))
+        self.status_label = ttk.Label(
+            status_frame, text="Prêt", font=("Segoe UI", 10))
         self.status_label.grid(row=0, column=0, sticky="w", padx=5)
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(status_frame, style="Green.Horizontal.TProgressbar",
@@ -255,7 +292,8 @@ class PublipostageGUI:
         self.progress_bar.grid(row=0, column=1, sticky="ew", padx=5)
         status_frame.columnconfigure(1, weight=1)
         # Label pour afficher le pourcentage sur la jauge
-        self.progress_percentage = ttk.Label(status_frame, text="0%", font=("Segoe UI", 10), background=self.bg_color)
+        self.progress_percentage = ttk.Label(
+            status_frame, text="0%", font=("Segoe UI", 10), background=self.bg_color)
         self.progress_percentage.grid(row=0, column=2, padx=5)
 
         # Boutons d'action (responsive)
@@ -274,7 +312,8 @@ class PublipostageGUI:
         """Configure le logging pour rediriger vers le widget Text."""
         text_handler = LoggingHandler(self.log_text)
         text_handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s | %(levelname)-8s | %(message)s', '%H:%M:%S')
+        formatter = logging.Formatter(
+            '%(asctime)s | %(levelname)-8s | %(message)s', '%H:%M:%S')
         text_handler.setFormatter(formatter)
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.DEBUG)
@@ -310,13 +349,15 @@ class PublipostageGUI:
     def browse_input_file(self):
         filepath = filedialog.askopenfilename(
             title="Sélectionner le fichier Excel",
-            filetypes=[("Fichiers Excel", "*.xlsx *.xls"), ("Tous les fichiers", "*.*")]
+            filetypes=[("Fichiers Excel", "*.xlsx *.xls"),
+                       ("Tous les fichiers", "*.*")]
         )
         if filepath:
             self.input_file_var.set(filepath)
 
     def browse_output_dir(self):
-        dirpath = filedialog.askdirectory(title="Sélectionner le dossier de sortie")
+        dirpath = filedialog.askdirectory(
+            title="Sélectionner le dossier de sortie")
         if dirpath:
             self.output_dir_var.set(dirpath)
 
@@ -331,7 +372,8 @@ class PublipostageGUI:
     def browse_logo_file(self):
         filepath = filedialog.askopenfilename(
             title="Sélectionner le logo",
-            filetypes=[("Images", "*.png *.jpg *.jpeg *.gif *.bmp"), ("Tous les fichiers", "*.*")]
+            filetypes=[("Images", "*.png *.jpg *.jpeg *.gif *.bmp"),
+                       ("Tous les fichiers", "*.*")]
         )
         if filepath:
             self.logo_path_var.set(filepath)
@@ -341,7 +383,8 @@ class PublipostageGUI:
     def browse_signature_file(self):
         filepath = filedialog.askopenfilename(
             title="Sélectionner la signature",
-            filetypes=[("Images", "*.png *.jpg *.jpeg *.gif *.bmp"), ("Tous les fichiers", "*.*")]
+            filetypes=[("Images", "*.png *.jpg *.jpeg *.gif *.bmp"),
+                       ("Tous les fichiers", "*.*")]
         )
         if filepath:
             self.signature_path_var.set(filepath)
@@ -351,7 +394,8 @@ class PublipostageGUI:
     def open_output_folder(self):
         output_dir = self.output_dir_var.get()
         if not os.path.exists(output_dir):
-            messagebox.showwarning("Attention", f"Le dossier de sortie n'existe pas : {output_dir}")
+            messagebox.showwarning(
+                "Attention", f"Le dossier de sortie n'existe pas : {output_dir}")
             return
         try:
             if sys.platform == 'win32':
@@ -362,19 +406,24 @@ class PublipostageGUI:
                 subprocess.run(['xdg-open', output_dir])
             self.logger.info(f"Dossier ouvert : {output_dir}")
         except Exception as e:
-            self.logger.error(f"Erreur lors de l'ouverture du dossier : {str(e)}")
-            messagebox.showerror("Erreur", f"Impossible d'ouvrir le dossier : {str(e)}")
+            self.logger.error(
+                f"Erreur lors de l'ouverture du dossier : {str(e)}")
+            messagebox.showerror(
+                "Erreur", f"Impossible d'ouvrir le dossier : {str(e)}")
 
     def start_processing(self):
         """Lance le traitement dans un thread séparé après vérification des paramètres."""
         if self.processing:
-            messagebox.showinfo("Information", "Un traitement est déjà en cours.")
+            messagebox.showinfo(
+                "Information", "Un traitement est déjà en cours.")
             return
         if not self.skip_processing_var.get() and not os.path.exists(self.input_file_var.get()):
-            messagebox.showerror("Erreur", "Le fichier Excel d'entrée n'existe pas.")
+            messagebox.showerror(
+                "Erreur", "Le fichier Excel d'entrée n'existe pas.")
             return
         if self.skip_processing_var.get() and not os.path.exists(self.csv_path_var.get()):
-            messagebox.showerror("Erreur", "Le fichier CSV spécifié n'existe pas.")
+            messagebox.showerror(
+                "Erreur", "Le fichier CSV spécifié n'existe pas.")
             return
 
         # Vérifier les ressources logo et signature
@@ -401,9 +450,11 @@ class PublipostageGUI:
             "csv_path": self.csv_path_var.get() if self.skip_processing_var.get() else None,
             "logo_path": self.logo_path_var.get(),
             "signature_path": self.signature_path_var.get(),
-            "debug": self.debug_var.get()
+            "debug": self.debug_var.get(),
+            "output_format": self.output_format_var.get()
         }
-        self.process_thread = threading.Thread(target=self.run_processing_thread, args=(args,), daemon=True)
+        self.process_thread = threading.Thread(
+            target=self.run_processing_thread, args=(args,), daemon=True)
         self.process_thread.start()
         self.root.after(100, self.check_process_status)
 
@@ -455,7 +506,8 @@ class PublipostageGUI:
                 self.logger.info(f"Utilisation du CSV existant : {csv_path}")
             else:
                 start_time = time.time()
-                self.logger.info(f"Traitement du fichier Excel : {args['input']}")
+                self.logger.info(
+                    f"Traitement du fichier Excel : {args['input']}")
                 df_processed = nettoyer_fichier_excel(
                     input_file=args['input'],
                     output_file=params['csv_path'],
@@ -464,23 +516,33 @@ class PublipostageGUI:
                 )
                 csv_path = params['csv_path']
                 elapsed_time = time.time() - start_time
-                self.logger.info(f"Traitement terminé en {elapsed_time:.2f} sec")
-                self.logger.info(f"Lignes traitées : {len(df_processed)} ; Colonnes : {df_processed.columns.size}")
-                self.logger.info(f"SIRET uniques : {df_processed['SIRET'].nunique()}")
+                self.logger.info(
+                    f"Traitement terminé en {elapsed_time:.2f} sec")
+                self.logger.info(
+                    f"Lignes traitées : {len(df_processed)} ; Colonnes : {df_processed.columns.size}")
+                self.logger.info(
+                    f"SIRET uniques : {df_processed['SIRET'].nunique()}")
             self.update_progress(40, "CSV créé avec succès")
             separator = get('defaults.csv_separator', ';')
             df_processed = pd.read_csv(csv_path, sep=separator, quoting=1)
             self.update_progress(50, "Génération des attestations...")
             start_time = time.time()
+            from document_generator import OutputFormat
+            fmt_map = {"docx": OutputFormat.DOCX,
+                       "pdf": OutputFormat.PDF, "both": OutputFormat.BOTH}
+            output_fmt = fmt_map.get(
+                args.get("output_format", "docx"), OutputFormat.DOCX)
             generated_docs = generer_attestations_doeth(
                 csv_path=csv_path,
                 output_folder=args['output_dir'],
                 logger=app_logger,
                 signature_path=params['signature_path'],
-                logo_path=params['logo_path']
+                logo_path=params['logo_path'],
+                output_format=output_fmt,
             )
             elapsed_time = time.time() - start_time
-            self.logger.info(f"Attestations générées en {elapsed_time:.2f} sec : {len(generated_docs)} documents")
+            self.logger.info(
+                f"Attestations générées en {elapsed_time:.2f} sec : {len(generated_docs)} documents")
             self.update_progress(85, "Attestations générées")
             self.update_progress(90, "Calcul des statistiques...")
             try:
@@ -498,9 +560,11 @@ class PublipostageGUI:
             self.update_progress(95, "Finalisation...")
             self.logger.info("=== BILAN DU TRAITEMENT ===")
             self.logger.info(f"Total attestations : {len(generated_docs)}")
-            self.logger.info(f"SIRET traités : {stats.get('unique_sirets', 'N/A')}")
+            self.logger.info(
+                f"SIRET traités : {stats.get('unique_sirets', 'N/A')}")
             if 'unique_clients' in stats:
-                self.logger.info(f"Clients uniques : {stats['unique_clients']}")
+                self.logger.info(
+                    f"Clients uniques : {stats['unique_clients']}")
             if 'total_etp' in stats:
                 self.logger.info(f"Total ETP : {stats['total_etp']:.2f}")
             self.logger.info(f"Dossier de sortie : {args['output_dir']}")
@@ -532,7 +596,8 @@ class PublipostageGUI:
             self.disable_buttons(False)
             if self.progress_var.get() == 100:
                 if "Erreur" not in self.status_label.cget("text"):
-                    messagebox.showinfo("Information", "Traitement terminé avec succès!")
+                    messagebox.showinfo(
+                        "Information", "Traitement terminé avec succès!")
                     if messagebox.askyesno("Information", "Ouvrir le dossier des attestations générées ?"):
                         self.open_output_folder()
             return
@@ -550,7 +615,8 @@ def main():
     root = tk.Tk()
     app = PublipostageGUI(root)
     try:
-        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources', 'icon.ico')
+        icon_path = os.path.join(os.path.dirname(
+            os.path.abspath(__file__)), 'resources', 'icon.ico')
         if os.path.exists(icon_path):
             root.iconbitmap(icon_path)
     except:

@@ -76,6 +76,13 @@ def parse_arguments():
         help="Active le mode debug avec logs détaillés"
     )
 
+    parser.add_argument(
+        "--format",
+        choices=["docx", "pdf", "both"],
+        default="docx",
+        help="Format de sortie des attestations : docx (défaut), pdf, both"
+    )
+
     return parser.parse_args()
 
 
@@ -104,7 +111,8 @@ def setup_environment(args) -> Dict[str, Any]:
     )
 
     logger.info("=== DÉMARRAGE DU PUBLIPOSTAGE DOETH ===")
-    logger.info(f"Date et heure: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+    logger.info(
+        f"Date et heure: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
     # Collecter les paramètres
     params = {
@@ -141,7 +149,8 @@ def setup_environment(args) -> Dict[str, Any]:
         params["csv_path"] = args.csv_path
     else:
         processed_dir = get('paths.processed_dir')
-        params["csv_path"] = os.path.join(processed_dir, f"processed_{timestamp}.csv")
+        params["csv_path"] = os.path.join(
+            processed_dir, f"processed_{timestamp}.csv")
 
     # Vérification des chemins et création des dossiers nécessaires
     dirs_to_check = [
@@ -172,7 +181,8 @@ def setup_environment(args) -> Dict[str, Any]:
     # Vérification du fichier d'entrée
     if not params["skip_processing"] and not os.path.exists(params["input_file"]):
         logger.error(f"Fichier d'entrée non trouvé: {params['input_file']}")
-        raise FileNotFoundError(f"Fichier d'entrée non trouvé: {params['input_file']}")
+        raise FileNotFoundError(
+            f"Fichier d'entrée non trouvé: {params['input_file']}")
 
     logger.info("Environnement d'exécution configuré avec succès")
     return params
@@ -194,9 +204,11 @@ def process_data(params: Dict[str, Any], logger: logging.Logger) -> str:
         csv_path = params["csv_path"]
         if not os.path.exists(csv_path):
             logger.error(f"Fichier CSV spécifié non trouvé: {csv_path}")
-            raise FileNotFoundError(f"Fichier CSV spécifié non trouvé: {csv_path}")
+            raise FileNotFoundError(
+                f"Fichier CSV spécifié non trouvé: {csv_path}")
 
-        logger.info(f"Étape de traitement ignorée, utilisation du CSV existant: {csv_path}")
+        logger.info(
+            f"Étape de traitement ignorée, utilisation du CSV existant: {csv_path}")
         return csv_path
 
     logger.info("=== ÉTAPE 1: TRAITEMENT DES DONNÉES EXCEL ===")
@@ -208,16 +220,20 @@ def process_data(params: Dict[str, Any], logger: logging.Logger) -> str:
         csv_path = params["csv_path"]
         sheet_name = params["sheet_name"]
 
-        logger.info(f"Traitement du fichier: {input_file}, feuille: {sheet_name}")
+        logger.info(
+            f"Traitement du fichier: {input_file}, feuille: {sheet_name}")
         logger.info(f"Fichier CSV de sortie: {csv_path}")
 
         # Appel à la fonction de traitement des données
-        df_processed = nettoyer_fichier_excel(input_file, logger, csv_path, sheet_name)
+        df_processed = nettoyer_fichier_excel(
+            input_file, logger, csv_path, sheet_name)
 
         elapsed_time = time.time() - start_time
         logger.info(f"Traitement terminé en {elapsed_time:.2f} secondes")
-        logger.info(f"Données traitées: {len(df_processed)} lignes, {df_processed.columns.size} colonnes")
-        logger.info(f"Nombre de SIRET uniques: {df_processed['SIRET'].nunique()}")
+        logger.info(
+            f"Données traitées: {len(df_processed)} lignes, {df_processed.columns.size} colonnes")
+        logger.info(
+            f"Nombre de SIRET uniques: {df_processed['SIRET'].nunique()}")
 
         return csv_path
 
@@ -256,7 +272,8 @@ def generate_documents(params: Dict[str, Any], csv_path: str, logger: logging.Lo
             output_folder=output_dir,
             logger=logger,
             signature_path=signature_path,
-            logo_path=logo_path
+            logo_path=logo_path,
+            output_format=params.get("output_format"),
         )
 
         elapsed_time = time.time() - start_time
@@ -266,7 +283,8 @@ def generate_documents(params: Dict[str, Any], csv_path: str, logger: logging.Lo
         return generated_docs
 
     except Exception as e:
-        logger.error(f"Erreur lors de la génération des attestations: {str(e)}")
+        logger.error(
+            f"Erreur lors de la génération des attestations: {str(e)}")
         raise
 
 
@@ -290,7 +308,8 @@ def generate_statistics(df: pd.DataFrame, generated_docs: List[str]) -> Dict[str
         # Statistiques de base
         stats["total_rows"] = len(df)
         stats["unique_sirets"] = df['SIRET'].nunique()
-        stats["unique_clients"] = df['NOM_CLIENT'].nunique() if 'NOM_CLIENT' in df.columns else 0
+        stats["unique_clients"] = df['NOM_CLIENT'].nunique(
+        ) if 'NOM_CLIENT' in df.columns else 0
         stats["total_docs"] = len(generated_docs)
 
         # Statistiques par regroupement si la colonne existe
@@ -303,17 +322,21 @@ def generate_statistics(df: pd.DataFrame, generated_docs: List[str]) -> Dict[str
         if 'ETP_ANNUEL' in df.columns:
             stats["total_etp"] = df['ETP_ANNUEL'].sum()
             stats["avg_etp_per_employee"] = df['ETP_ANNUEL'].mean()
-            stats["avg_etp_per_siret"] = df.groupby('SIRET')['ETP_ANNUEL'].sum().mean()
+            stats["avg_etp_per_siret"] = df.groupby(
+                'SIRET')['ETP_ANNUEL'].sum().mean()
             logger.info(f"Total ETP: {stats['total_etp']:.2f}")
-            logger.info(f"Moyenne ETP par employé: {stats['avg_etp_per_employee']:.2f}")
-            logger.info(f"Moyenne ETP par SIRET: {stats['avg_etp_per_siret']:.2f}")
+            logger.info(
+                f"Moyenne ETP par employé: {stats['avg_etp_per_employee']:.2f}")
+            logger.info(
+                f"Moyenne ETP par SIRET: {stats['avg_etp_per_siret']:.2f}")
 
         # Statistiques sur les heures
         if 'NB_HEURES' in df.columns:
             stats["total_heures"] = df['NB_HEURES'].sum()
             stats["avg_heures_per_employee"] = df['NB_HEURES'].mean()
             logger.info(f"Total heures: {stats['total_heures']:.2f}")
-            logger.info(f"Moyenne heures par employé: {stats['avg_heures_per_employee']:.2f}")
+            logger.info(
+                f"Moyenne heures par employé: {stats['avg_heures_per_employee']:.2f}")
 
         # Autres statistiques
         stats["file_count_by_extension"] = {}
@@ -324,12 +347,14 @@ def generate_statistics(df: pd.DataFrame, generated_docs: List[str]) -> Dict[str
             else:
                 stats["file_count_by_extension"][ext] = 1
 
-        logger.info(f"Types de fichiers générés: {stats['file_count_by_extension']}")
+        logger.info(
+            f"Types de fichiers générés: {stats['file_count_by_extension']}")
 
         return stats
 
     except Exception as e:
-        logger.error(f"Erreur lors de la génération des statistiques: {str(e)}")
+        logger.error(
+            f"Erreur lors de la génération des statistiques: {str(e)}")
         # En cas d'erreur, on renvoie tout de même les statistiques partielles
         return stats
 
@@ -342,7 +367,7 @@ def main():
     args = parse_arguments()
 
     try:
-        ## Configuration de l'environnement
+        # Configuration de l'environnement
         params = setup_environment(args)
 
         # Déterminer l'environnement d'exécution
@@ -368,6 +393,10 @@ def main():
         df_processed = pd.read_csv(csv_path, sep=separator, quoting=1)
 
         # Étape 2: Génération des attestations
+        from src.document_generator import OutputFormat
+        fmt_map = {"docx": OutputFormat.DOCX,
+                   "pdf": OutputFormat.PDF, "both": OutputFormat.BOTH}
+        params["output_format"] = fmt_map.get(args.format, OutputFormat.DOCX)
         generated_docs = generate_documents(params, csv_path, logger)
 
         # Étape 3: Génération des statistiques
@@ -377,12 +406,14 @@ def main():
         total_time = time.time() - start_time
         logger.info("=== BILAN DU TRAITEMENT ===")
         logger.info(f"Durée totale d'exécution: {total_time:.2f} secondes")
-        logger.info(f"Nombre total d'attestations générées: {len(generated_docs)}")
+        logger.info(
+            f"Nombre total d'attestations générées: {len(generated_docs)}")
         logger.info(f"Nombre de SIRET traités: {stats['unique_sirets']}")
         logger.info(f"Nombre de clients uniques: {stats['unique_clients']}")
 
         if 'total_etp' in stats:
-            logger.info(f"Total d'unités bénéficiaires (ETP): {stats['total_etp']:.2f}")
+            logger.info(
+                f"Total d'unités bénéficiaires (ETP): {stats['total_etp']:.2f}")
 
         logger.info(f"Dossier de sortie: {params['output_dir']}")
         logger.info("=== TRAITEMENT TERMINÉ AVEC SUCCÈS ===")

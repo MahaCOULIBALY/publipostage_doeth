@@ -1,16 +1,19 @@
 """
 Module de génération de documents pour le projet Publipostage DOETH.
 
-Ce module gère la création des attestations DOETH au format Word
+Ce module gère la création des attestations DOETH au format Word et/ou PDF
 à partir des données CSV prétraitées.
 """
+import csv
 import logging
 import os
-import pandas as pd
+import tempfile
 import datetime
+from enum import Enum
 from pathlib import Path
-from typing import Optional, Union, List, Dict, Any
+from typing import Optional, List, Dict, Any
 
+import pandas as pd
 from docx import Document
 from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT as WD_ALIGN_PARAGRAPH
@@ -24,6 +27,13 @@ from src.utils.logger import get_logger
 
 # Initialisation du logger
 logger = get_logger(__name__)
+
+
+class OutputFormat(Enum):
+    """Format de sortie des attestations."""
+    DOCX = "docx"
+    PDF = "pdf"
+    BOTH = "both"
 
 
 def create_document(template_path: Optional[str] = None) -> Document:
@@ -108,21 +118,21 @@ def add_client_header(doc: Document, client_info: Dict[str, Any]) -> None:
         p.add_run("\n")
 
     # Adresse
-    adresse = client_info.get('ADRESSE_CLIENT', '')
+    adresse = client_info.get('ADRESSE CLIENT', '')
     if adresse:
         run = p.add_run(f"{adresse}")
         run.bold = True
         p.add_run("\n")
 
     # Code postal
-    cp = client_info.get('CP_CLIENT', '')
+    cp = client_info.get('CP CLIENT', '')
     if cp:
         run = p.add_run(f"{cp}")
         run.bold = True
         p.add_run("\n")
 
     # Ville
-    ville = client_info.get('VILLE_CLIENT', '')
+    ville = client_info.get('VILLE CLIENT', '')
     if ville:
         run = p.add_run(f"{ville}")
         run.bold = True
@@ -412,9 +422,14 @@ def save_document(doc: Document, output_path: str) -> str:
 def create_attestation(file_number: int, siret_data: pd.DataFrame, output_folder: str,
                        logger: logging.Logger,
                        signature_path: Optional[str] = None,
-                       logo_path: Optional[str] = None) -> str:
+                       logo_path: Optional[str] = None,
+                       output_format: OutputFormat = OutputFormat.DOCX) -> List[str]:
     """
     Crée une attestation DOETH pour un SIRET donné.
+
+    Le DOCX est toujours généré en premier (source de vérité du layout).
+    Si output_format est PDF, le DOCX est converti puis supprimé.
+    Si output_format est BOTH, les deux fichiers sont conservés.
 
     Args:
         file_number: N° de fichier à créer
@@ -423,14 +438,15 @@ def create_attestation(file_number: int, siret_data: pd.DataFrame, output_folder
         logger: Logger pour suivre l'évolution du processus
         signature_path: Chemin vers l'image de signature
         logo_path: Chemin vers l'image du logo
+        output_format: Format de sortie souhaité (DOCX, PDF ou BOTH)
 
     Returns:
-        str: Chemin du document généré
+        List[str]: Liste des chemins des fichiers générés
     """
     if len(siret_data) == 0:
         logger.warning(
             "Aucune donnée fournie pour la génération de l'attestation")
-        return ""
+        return []
 
     # Récupérer les informations générales (première ligne)
     info = siret_data.iloc[0]
@@ -441,50 +457,77 @@ def create_attestation(file_number: int, siret_data: pd.DataFrame, output_folder
     logger.info(f"Création de l'attestation pour SIRET: {siret}, Client: {nom_client}, "
                 f"Nom du regroupement: {nom_regroupement}")
 
-    # Création du document
+    # Construction du document Word
     doc = create_document()
-
-    # Ajout du logo
     add_logo(doc, logo_path)
-
-    # Ajout des informations client en en-tête
     add_client_header(doc, info)
-
-    # Ajout du titre
     add_title(doc)
-
-    # Ajout des références légales
     add_legal_references(doc)
-
-    # Ajout des informations du représentant légal
     add_representative_info(doc)
-
-    # Ajout de l'attestation client
     add_client_attestation(doc, info)
-
-    # Création du tableau des employés
     create_employee_table(doc, siret_data)
-
-    # Ajout du pied de page et de la signature
     add_footer_and_signature(doc, signature_path)
 
-    # Année -1 dans le nom du fichier
+    # Nom de base du fichier (sans extension)
     year = datetime.datetime.now().year - 1
+    base_name = f"{file_number}_Attestation DOETH_{year}_{nom_regroupement}"
 
-    # Nom du fichier de sortie
-    output_file = os.path.join(
-        output_folder, f"{file_number}_Attestation DOETH_{year}_{nom_regroupement}.docx")
+    # Sauvegarde du DOCX (toujours nécessaire comme intermédiaire)
+    docx_path = Path(output_folder) / f"{base_name}.docx"
+    save_document(doc, str(docx_path))
 
-    # Sauvegarde du document
-    save_document(doc, output_file)
+    generated: List[str] = []
 
-    return output_file
+    if output_format in (OutputFormat.DOCX, OutputFormat.BOTH):
+        generated.append(str(docx_path))
+
+    if output_format in (OutputFormat.PDF, OutputFormat.BOTH):
+        pdf_path = _convert_to_pdf(docx_path, logger)
+        if pdf_path:
+            generated.append(str(pdf_path))
+        # Supprimer le DOCX intermédiaire si seul le PDF est demandé
+        if output_format == OutputFormat.PDF:
+            try:
+                docx_path.unlink()
+            except OSError as e:
+                logger.warning(
+                    f"Impossible de supprimer le DOCX intermédiaire: {e}")
+
+    return generated
+
+
+def _convert_to_pdf(docx_path: Path, logger: logging.Logger) -> Optional[Path]:
+    """
+    Convertit un fichier DOCX en PDF via Word COM (Windows) ou LibreOffice (Linux/macOS).
+
+    Args:
+        docx_path: Chemin du fichier DOCX source
+        logger: Logger
+
+    Returns:
+        Path du PDF généré, ou None en cas d'échec
+    """
+    pdf_path = docx_path.with_suffix('.pdf')
+    try:
+        from docx2pdf import convert
+        convert(str(docx_path), str(pdf_path))
+        logger.debug(f"PDF généré: {pdf_path}")
+        return pdf_path
+    except ImportError:
+        logger.error(
+            "docx2pdf n'est pas installé. Installez-le avec : uv add docx2pdf")
+        return None
+    except Exception as e:
+        logger.error(
+            f"Erreur lors de la conversion PDF pour {docx_path.name}: {e}")
+        return None
 
 
 def generer_attestations_doeth(csv_path: str, output_folder: str,
                                logger: logging.Logger,
                                signature_path: Optional[str] = None,
-                               logo_path: Optional[str] = None) -> List[str]:
+                               logo_path: Optional[str] = None,
+                               output_format: OutputFormat = OutputFormat.DOCX) -> List[str]:
     """
     Génère des attestations DOETH regroupées par SIRET à partir d'un fichier CSV.
 
@@ -494,62 +537,55 @@ def generer_attestations_doeth(csv_path: str, output_folder: str,
         logger: Logger pour suivre l'évolution des opérations
         signature_path: Chemin vers l'image de signature
         logo_path: Chemin vers l'image du logo
+        output_format: Format de sortie (DOCX, PDF ou BOTH)
 
     Returns:
-        List[str]: Liste des chemins des documents générés
+        List[str]: Liste des chemins des fichiers générés
     """
-    logger.info(
-        f"Début de la génération des attestations DOETH à partir de: {csv_path}")
+    format_label = {
+        OutputFormat.DOCX: "Word (.docx)",
+        OutputFormat.PDF: "PDF (.pdf)",
+        OutputFormat.BOTH: "Word + PDF",
+    }[output_format]
 
-    # Création du dossier de sortie s'il n'existe pas
+    logger.info(
+        f"Génération des attestations ({format_label}) depuis: {csv_path}")
     os.makedirs(output_folder, exist_ok=True)
 
     try:
-        # Lecture du fichier CSV
         separator = get('defaults.csv_separator', ';')
-        df = pd.read_csv(csv_path, sep=separator, quoting=1)
+        df = pd.read_csv(csv_path, sep=separator, quoting=csv.QUOTE_NONNUMERIC,
+                         dtype={'SIRET': str, 'SIREN': str, 'NIC': str})
         logger.info(f"Fichier CSV chargé: {len(df)} lignes")
 
-        # Tri par SIRET
         df = df.sort_values(by=['SIRET', 'NOM', 'PRENOM'])
-
-        # Regroupement par SIRET
         sirets = df['SIRET'].unique()
         logger.info(f"Nombre total de SIRET à traiter: {len(sirets)}")
 
-        # Liste pour stocker les chemins des documents générés
-        generated_docs = []
+        generated_docs: List[str] = []
 
-        # Pour chaque SIRET, générer un document Word
         for i, siret in enumerate(sirets):
-            # Filtrer les données pour ce SIRET
             siret_data = df[df['SIRET'] == siret]
-
-            # Vérifier qu'on a des données
             if len(siret_data) == 0:
                 logger.warning(f"Aucune donnée pour le SIRET: {siret}")
                 continue
 
-            # Génération de l'attestation
-            output_file = create_attestation(
-                (i + 1), siret_data, output_folder, logger, signature_path, logo_path)
-            if output_file:
-                generated_docs.append(output_file)
+            files = create_attestation(
+                i + 1, siret_data, output_folder, logger,
+                signature_path, logo_path, output_format)
+            generated_docs.extend(files)
 
-            # Afficher la progression avec barre visuelle
+            # Barre de progression
             progress = (i + 1) / len(sirets)
-            bar_length = 30
-            filled_length = int(bar_length * progress)
-            bar = '█' * filled_length + '░' * (bar_length - filled_length)
-
+            filled = int(30 * progress)
+            bar = '█' * filled + '░' * (30 - filled)
             logger.info(
-                f"Document généré ({i + 1}/{len(sirets)}) [{bar}] {progress:.1%}: {output_file}")
+                f"({i + 1}/{len(sirets)}) [{bar}] {progress:.1%}: {', '.join(Path(f).name for f in files)}")
 
         logger.info(
-            f"Génération terminée. {len(generated_docs)} documents ont été créés dans le dossier {output_folder}")
+            f"Génération terminée: {len(generated_docs)} fichier(s) dans {output_folder}")
         return generated_docs
 
     except Exception as e:
-        logger.error(
-            f"Erreur lors de la génération des attestations: {str(e)}")
+        logger.error(f"Erreur lors de la génération des attestations: {e}")
         raise

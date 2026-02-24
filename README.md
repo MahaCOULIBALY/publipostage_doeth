@@ -1,476 +1,375 @@
-# Publipostage DOETH - Documentation
+# Publipostage DOETH
+
+Automatisation de la génération d'attestations DOETH (Déclaration Obligatoire d'Emploi des Travailleurs Handicapés) à partir de fichiers Excel. Produit des attestations Word et/ou PDF, regroupées par SIRET, prêtes à être envoyées aux clients.
+
+---
 
 ## Sommaire
 
 1. [Vue d'ensemble](#vue-densemble)
-   - [Description](#description)
-   - [Fonctionnalités clés](#fonctionnalités-clés)
-2. [Installation](#installation)
-   - [Prérequis](#prérequis)
-   - [Étapes d'installation](#étapes-dinstallation)
-   - [Vérification](#vérification-de-linstallation)
-3. [Configuration](#configuration)
-   - [Structure de configuration](#structure-de-configuration)
-   - [Environnements](#configuration-des-environnements)
-   - [Format des fichiers d'entrée](#format-des-fichiers-dentrée)
-4. [Architecture](#architecture)
-   - [Structure du projet](#structure-du-projet)
-   - [Flux de traitement](#flux-de-traitement)
-   - [Composants principaux](#composants-principaux)
-   - [Architecture Fonctionnelle](#architecture-fonctionnelle)
-   - [Architecture Technique](#architecture-technique)
+2. [Prérequis](#prérequis)
+3. [Installation](#installation)
+4. [Configuration](#configuration)
 5. [Utilisation](#utilisation)
-   - [Démarrage rapide](#démarrage-rapide)
-   - [Options en ligne de commande](#options-en-ligne-de-commande)
-   - [Résultats générés](#résultats-générés)
-   - [Journalisation](#journalisation)
-6. [Développement](#développement)
-   - [Bonnes pratiques](#bonnes-pratiques)
-   - [Gestion des erreurs](#gestion-des-erreurs)
-   - [Extensibilité](#extensibilité)
-7. [Maintenance](#maintenance)
-   - [Dépannage](#guide-de-dépannage)
-   - [Contact](#contact)
+6. [Architecture](#architecture)
+7. [Flux de traitement](#flux-de-traitement)
+8. [Format des données d'entrée](#format-des-données-dentrée)
+9. [Développement](#développement)
+10. [Dépannage](#dépannage)
+
+---
 
 ## Vue d'ensemble
 
-### Description
+L'application lit un fichier Excel BOETH, nettoie et regroupe les données par SIRET, puis génère une attestation par entreprise cliente. Chaque attestation inclut l'en-tête société, les informations légales, le tableau des bénéficiaires avec leurs ETP, et la signature du représentant légal.
 
-Publipostage DOETH est une application Python conçue pour automatiser la génération d'attestations DOETH (Déclaration Obligatoire d'Emploi des Travailleurs Handicapés) à partir de fichiers Excel. L'application traite les données, effectue des regroupements par SIRET, et produit des documents Word formatés professionnellement. Elle est spécialement adaptée aux besoins du Groupe Interaction pour la gestion des attestations DOETH destinées aux clients et aux agences.
+**Formats de sortie :** Word (`.docx`), PDF (`.pdf`), ou les deux simultanément.
 
-### Fonctionnalités clés
+**Deux modes d'accès :**
+- Interface graphique (`gui.py`) pour une utilisation quotidienne
+- Ligne de commande (`main.py`) pour l'automatisation et les tests
 
-- Nettoyage et transformation automatique des données Excel
-- Regroupement intelligent des employés par SIRET
-- Génération automatique d'attestations Word professionnelles
-- Formatage personnalisé pour une présentation optimale
-- Gestion avancée des erreurs avec journalisation détaillée
-- Architecture modulaire et extensible
-- Support multi-environnements (Production, Développement, Test)
-- Intégration du logo et de la signature
+---
+
+## Prérequis
+
+| Composant | Version minimale | Rôle |
+|---|---|---|
+| Python | 3.12 | Runtime |
+| Microsoft Word | 2016+ | Conversion PDF (COM Windows) |
+| uv | latest | Gestionnaire d'environnement |
+
+**Dépendances Python** (installées automatiquement) :
+
+```
+pandas >= 2.0
+python-docx >= 1.1
+openpyxl >= 3.1
+pyyaml >= 6.0
+pywin32 >= 308
+colorama >= 0.4
+```
+
+---
 
 ## Installation
 
-### Prérequis
-
-- Python 3.8 ou supérieur
-- Bibliothèques Python requises :
-  - pandas
-  - openpyxl
-  - python-docx
-  - pyyaml
-  - colorama
-
-### Étapes d'installation
-
-1. Cloner le dépôt :
 ```bash
-git clone [URL_REPO]
+# 1. Cloner le dépôt
+git clone <URL_REPO>
 cd publipostage_doeth
+
+# 2. Installer les dépendances
+uv sync
+
+# 3. Vérifier l'installation
+uv run python main.py --help
 ```
 
-2. Créer et activer l'environnement virtuel :
-```bash
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# Linux/MacOS
-source venv/bin/activate
-```
-
-3. Installer les dépendances :
-```bash
-pip install -r requirements.txt
-```
-
-### Vérification de l'installation
-
-Pour vérifier que l'installation est correcte, exécutez :
+**Structure des dossiers à créer** (ignorés par Git, à initialiser une fois) :
 
 ```bash
-python main.py --version
+mkdir -p data/input data/processed data/output logs
+touch data/input/.gitkeep data/processed/.gitkeep data/output/.gitkeep
 ```
+
+---
 
 ## Configuration
 
-### Structure de configuration
-
-La configuration de l'application est définie dans le fichier `config/config.yaml`. Cette structure modulaire permet de facilement adapter l'application à différents besoins :
+Tous les paramètres sont centralisés dans `config.yaml` à la racine :
 
 ```yaml
-# Configuration Publipostage DOETH
 paths:
-  base_dir: __BASE_DIR__
-  data_dir: ${paths.base_dir}/data
-  resources_dir: ${paths.base_dir}/resources
-  logs_dir: ${paths.base_dir}/logs
-  input_dir: ${paths.data_dir}/input
+  base_dir: D:\Data\01_Projects\Active\publipostage_doeth
+  input_dir:     ${paths.data_dir}/input
   processed_dir: ${paths.data_dir}/processed
-  output_dir: ${paths.data_dir}/output
+  output_dir:    ${paths.data_dir}/output
+  logs_dir:      ${paths.base_dir}/logs
 
 resources:
-  logo_path: ${paths.resources_dir}/images/Entete_GI.png
+  logo_path:      ${paths.resources_dir}/images/Entete_GI.png
   signature_path: ${paths.resources_dir}/images/RL_LG.png
 
 defaults:
-  input_filename: "Liste des BOETH par RGP CLI avec adresses.xlsx"
-  excel_sheet: "Feuil1"
-  csv_separator: ";"
-  date_format: "%d/%m/%Y"
+  input_filename: "Liste des BOETH par RGP CLI avec adresses V2.xlsx"
+  excel_sheet:    "Feuil1"
+  csv_separator:  ";"
+  date_format:    "%d/%m/%Y"
 
 document:
-  font_size: 10
-  table_font_size: 8
-  paragraph_spacing: 4
-  margins:
-    top: 1.0
-    bottom: 1.0
-    left: 1.5
-    right: 1.5
-  logo_width: 4.0
-  signature_width: 4.5
-  title: "Attestation relative aux travailleurs en situation d'handicap mis à disposition par une entreprise de travail temporaire ou un groupement d'employeurs"
-  city: "Rennes"
+  font_size:       10
+  table_font_size:  8
+  margins:          1.5   # cm
 
 representant:
-  nom: "Loïc GALLERAND"
-  adresse: "233 rue de Châteaugiron à Rennes (35000)"
-  siret: "49342093900057"
-
-logging:
-  console_level: "INFO"
-  file_level: "DEBUG"
-  max_bytes: 10485760
-  backup_count: 10
-  enable_colors: true
+  nom:    "Loïc GALLERAND"
+  adresse: "233 rue de Chateaugiron a Rennes (35000)"
+  siret:   "49342093900057"
 ```
 
-### Configuration des environnements
+Adapter `base_dir` et `representant` a votre environnement. Les autres chemins sont resolus dynamiquement.
 
-L'application détecte automatiquement l'environnement d'exécution basé sur le nom d'hôte de la machine ou les variables d'environnement. Chaque environnement peut avoir sa propre configuration via les fichiers `.env.prod`, `.env.develop` et `.env.test` dans le répertoire `config`.
+---
 
-### Format des fichiers d'entrée
+## Utilisation
 
-Les fichiers d'entrée doivent respecter les critères suivants :
+### Interface graphique
 
-- Format Excel (XLSX) contenant les données BOETH
-- Structure de colonnes respectant le format attendu
-- Encodage UTF-8
+```bash
+uv run python gui.py
+```
+
+Les parametres disponibles dans l'interface :
+
+| Champ | Description |
+|---|---|
+| Fichier Excel | Chemin vers le fichier BOETH source |
+| Feuille Excel | Nom de l'onglet a traiter |
+| Dossier de sortie | Ou enregistrer les attestations |
+| Logo / Signature | Images a integrer dans les documents |
+| Format de sortie | Word, PDF, ou Les deux |
+| Ignorer traitement Excel | Utiliser un CSV deja genere |
+| Mode debug | Logs detailles (niveau DEBUG) |
+
+### Ligne de commande
+
+```bash
+# Traitement complet avec les valeurs du config.yaml
+uv run python main.py
+
+# Fichier et feuille explicites
+uv run python main.py \
+  --input "data/input/Liste des BOETH par RGP CLI avec adresses V2.xlsx" \
+  --sheet "Liste des BOETH par RGP CLI ave"
+
+# Choisir le format de sortie
+uv run python main.py --format pdf      # PDF uniquement
+uv run python main.py --format both     # Word + PDF
+uv run python main.py --format docx     # Word uniquement (defaut)
+
+# Sauter le traitement Excel - utiliser un CSV existant
+uv run python main.py \
+  --skip-processing \
+  --csv-path "data/processed/processed_20260224_121027.csv"
+
+# Mode debug
+uv run python main.py --debug
+```
+
+**Reference complete des arguments :**
+
+| Argument | Valeurs | Defaut | Description |
+|---|---|---|---|
+| `--input` | chemin | config.yaml | Fichier Excel source |
+| `--sheet` | texte | config.yaml | Nom de la feuille |
+| `--output-dir` | chemin | config.yaml | Dossier de sortie |
+| `--format` | `docx` `pdf` `both` | `docx` | Format des attestations |
+| `--skip-processing` | flag | False | Passer directement a la generation |
+| `--csv-path` | chemin | auto | CSV source (avec `--skip-processing`) |
+| `--debug` | flag | False | Logs niveau DEBUG |
+
+### Fichiers produits
+
+```
+data/
+├── processed/
+│   └── processed_YYYYMMDD_HHMMSS.csv     # Donnees intermediaires
+└── output/
+    ├── 1_Attestation DOETH_2025_ADAPEI.docx
+    ├── 1_Attestation DOETH_2025_ADAPEI.pdf
+    ├── 2_Attestation DOETH_2025_SNEF.docx
+    └── ...
+logs/
+    └── publipostage_doeth_prod_YYYYMMDD.log
+```
+
+---
 
 ## Architecture
-
-### Structure du projet
 
 ```
 publipostage_doeth/
 │
-├── config/                     # Configuration
-│   └── config.yaml            # Configuration principale
+├── config.yaml              # Configuration centralisee
 │
-├── data/                       # Données
-│   ├── input/                 # Fichiers Excel à traiter
-│   ├── processed/             # Fichiers CSV intermédiaires
-│   └── output/                # Attestations générées
+├── data/                    # <- ignore par Git
+│   ├── input/               # Fichiers Excel sources
+│   ├── processed/           # CSV intermediaires horodates
+│   └── output/              # Attestations generees
 │
-├── logs/                       # Journaux d'application
+├── resources/               # <- ignore par Git
+│   └── images/
+│       ├── Entete_GI.png    # Logo en-tete
+│       └── RL_LG.png        # Signature representant legal
 │
-├── resources/                   # Ressources statiques
-│   ├── images/                # Images (logo, signature)
-│   └── templates/             # Modèles de documents
+├── logs/                    # <- ignore par Git
 │
-├── src/                        # Code source
-│   ├── __init__.py
-│   ├── config.py              # Gestion de configuration
-│   ├── data_processor.py      # Traitement des données Excel
-│   ├── document_generator.py  # Génération des attestations
-│   └── utils/                 # Utilitaires
-│       ├── __init__.py
-│       ├── logger.py          # Configuration logs
-│       └── error_handling.py  # Gestion des erreurs
+├── data_processor.py        # Etapes 1-6 : Excel -> CSV propre
+├── document_generator.py    # Generation Word, enum OutputFormat
+├── pdf_converter.py         # Conversion DOCX->PDF via COM Word
+├── config.py                # Chargement et resolution config.yaml
+├── logger.py                # Logger colore + rotation fichier
+├── error_handling.py        # Decorateurs et handlers d'erreurs
+├── gui.py                   # Interface graphique Tkinter
+├── main.py                  # Point d'entree CLI
 │
-├── requirements.txt            # Dépendances
-├── README.md                   # Documentation
-└── main.py                     # Point d'entrée
+├── pyproject.toml
+├── requirements.txt
+├── .gitignore
+└── README.md
 ```
 
-### Flux de traitement
+**Separation des responsabilites :**
 
-1. **Initialisation** : Chargement de la configuration et configuration des logs
-2. **Traitement des données** :
-   - Chargement du fichier Excel source
-   - Nettoyage et transformation des données
-   - Création de la colonne SIRET (combinaison SIREN et NIC)
-   - Regroupement et agrégation par SIRET
-   - Filtrage des données (exclusion des "DIFFUS")
-   - Ajout des colonnes de traitement (NOUVEAU_GROUPE, FIN_GROUPE)
-   - Sauvegarde en format CSV intermédiaire
-3. **Génération des attestations** pour chaque SIRET :
-   - Création d'un document Word
-   - Ajout du logo et des informations d'en-tête
-   - Ajout des informations légales et du représentant
-   - Création du tableau des employés
-   - Calcul des totaux
-   - Ajout du pied de page et de la signature
-   - Sauvegarde de l'attestation
-4. **Finalisation** : Journalisation des résultats et nettoyage
-
-### Composants principaux
-
-- **ConfigManager** : Gestion de la configuration et des environnements
-- **DataProcessor** : Traitement et transformation des données Excel
-- **DocumentGenerator** : Création des attestations Word
-- **Logger** : Journalisation avec niveaux et rotation des logs
-
-### Architecture Fonctionnelle
-
-```mermaid
-flowchart TB
-    %% Sources
-    subgraph SOURCES["SOURCES"]
-        excel["Fichier Excel\nBOETH"]:::source
-        config["Configuration\nYAML"]:::config
-        resources["Logo et\nSignature"]:::resource
-    end
-    
-    %% Phase de préparation
-    subgraph PREPARATION["1. PRÉPARATION DES DONNÉES"]
-        loadData["Chargement\ndes données"]:::process
-        cleanData["Nettoyage et\nTransformation"]:::transform
-        groupBySiret["Regroupement\npar SIRET"]:::transform
-        storeCSV["Stockage CSV\nintermédiaire"]:::process
-    end
-    PREPARATION:::phase
-    
-    %% Phase de génération
-    subgraph GENERATION["2. GÉNÉRATION DES DOCUMENTS"]
-        iterateSiret["Pour chaque SIRET"]:::process
-        createDoc["Création du\ndocument Word"]:::process
-        addHeader["En-tête et\nInformations légales"]:::process
-        createTable["Tableau des\nemployés"]:::process
-        addTotal["Calcul et ajout\ndes totaux"]:::transform
-        saveDoc["Sauvegarde du\ndocument"]:::process
-    end
-    GENERATION:::phase
-    
-    %% Sortie
-    attestations["Attestations DOETH\nfinalisées"]:::output
-    
-    %% Flux principal
-    excel --> loadData --> cleanData --> groupBySiret --> storeCSV
-    storeCSV --> iterateSiret --> createDoc --> addHeader --> createTable --> addTotal --> saveDoc
-    saveDoc --> attestations
-    
-    %% Flux d'influence
-    config -..-> loadData
-    config -..-> groupBySiret
-    config -..-> createDoc
-    config -..-> addHeader
-    
-    resources -..-> addHeader
-    resources -..-> saveDoc
-    
-    %% Styles
-    classDef source fill:#ffcc80,stroke:#e65100,color:black
-    classDef process fill:#90caf9,stroke:#1565c0,color:black
-    classDef transform fill:#80deea,stroke:#00838f,color:black
-    classDef output fill:#a5d6a7,stroke:#2e7d32,color:black
-    classDef config fill:#f48fb1,stroke:#c2185b,color:black
-    classDef resource fill:#ce93d8,stroke:#6a1b9a,color:black
-    classDef phase fill:none,stroke:#9e9e9e,stroke-width:1px,stroke-dasharray: 5 5
-```
-
-### Architecture Technique
-
-```mermaid
-flowchart TB
-    %% Couches principales
-    subgraph CORE["COUCHE APPLICATIVE"]
-        main["main.py\nPoint d'entrée"]:::core
-        
-        subgraph Modules["Modules fonctionnels"]
-            config["config.py\nGestion configuration"]:::module
-            dataProc["data_processor.py\nTraitement données"]:::module
-            docGen["document_generator.py\nGénération documents"]:::module
-            utils["utils.py\nUtilitaires"]:::module
-        end
-    end
-    CORE:::layer
-    
-    subgraph DATA["DONNÉES & RESSOURCES"]
-        configYAML["config.yaml\nParamètres centralisés"]:::config
-        
-        subgraph Stockage["Stockage de données"]
-            input["input/\nFichiers Excel"]:::data
-            processed["processed/\nCSV intermédiaires"]:::data
-            output["output/\nAttestations générées"]:::data
-        end
-        
-        subgraph Ressources["Ressources statiques"]
-            images["Logo et signature"]:::data
-            templates["Modèles de document"]:::data
-        end
-        
-        logs["logs/\nJournalisation"]:::data
-    end
-    DATA:::layer
-    
-    subgraph INFRA["INFRASTRUCTURE"]
-        pandas["pandas"]:::infra
-        docx["python-docx"]:::infra
-        yaml["pyyaml"]:::infra
-    end
-    INFRA:::layer
-    
-    %% Relations principales
-    main --> config
-    main --> dataProc
-    main --> docGen
-    dataProc --> utils
-    docGen --> utils
-    
-    config --> configYAML
-    dataProc --> input
-    dataProc --> processed
-    docGen --> processed
-    docGen --> output
-    docGen --> images
-    docGen --> templates
-    
-    main --> logs
-    
-    %% Relations avec l'infrastructure
-    dataProc --> pandas
-    docGen --> docx
-    config --> yaml
-    
-    %% Flux principal de données
-    input --> dataProc --> processed --> docGen --> output
-
-    %% Styles
-    classDef core fill:#f178b6,stroke:#333,color:black,font-weight:bold
-    classDef module fill:#7986cb,stroke:#333,color:white
-    classDef data fill:#81c784,stroke:#333,color:black
-    classDef config fill:#fff176,stroke:#333,color:black
-    classDef infra fill:#e0e0e0,stroke:#333,color:black
-    classDef layer fill:none,stroke:#444,stroke-dasharray: 5 5
-```
-
-## Utilisation
-
-### Démarrage rapide
-
-1. Placer le fichier Excel à traiter dans le répertoire `data/input/`
-2. Exécuter l'application :
-
-```bash
-python main.py
-```
-
-3. Consulter les attestations générées dans le répertoire `data/output/`
-
-### Options en ligne de commande
-
-L'application dispose de plusieurs options en ligne de commande :
-
-```bash
-# Afficher l'aide
-python main.py --help
-
-# Mode debug avec logs détaillés
-python main.py --debug
-
-# Utilisation d'un fichier Excel spécifique
-python main.py --input "chemin/vers/mon_fichier.xlsx"
-
-# Ignorer le traitement Excel et utiliser un CSV existant
-python main.py --skip-processing --csv-path "chemin/vers/donnees_traitees.csv"
-```
-
-### Résultats générés
-
-- **Fichiers CSV intermédiaires** : Données traitées et regroupées
-  - Emplacement : `data/processed/`
-  - Nom : `processed_YYYYMMDD_HHMMSS.csv`
-
-- **Attestations DOETH** : Documents Word formatés
-  - Emplacement : `data/output/`
-  - Nom : `Attestation_<SIRET>.docx`
-  - Contenu : En-tête, informations légales, tableau des employés, totaux, signature
-
-### Journalisation
-
-L'application utilise un système de journalisation avancé :
-
-- **Logs console** : Affichage en temps réel avec code couleur
-- **Logs fichier** : Enregistrement détaillé dans `logs/`
-- **Rotation automatique** : Gestion des fichiers volumineux
-- **Niveaux configurables** : Ajustement de la verbosité selon l'environnement
-
-Exemple de log :
-```
-2025-02-25 14:50:23 | INFO     | MainThread | Démarrage de l'application
-2025-02-25 14:50:23 | INFO     | MainThread | Chargement du fichier Excel: data/input/Liste des BOETH par RGP CLI avec adresses.xlsx
-2025-02-25 14:50:24 | INFO     | MainThread | Fichier Excel chargé avec succès: 150 lignes, 18 colonnes
-2025-02-25 14:50:24 | INFO     | MainThread | Création de la colonne SIRET à partir de SIREN et NIC
-2025-02-25 14:50:24 | INFO     | MainThread | Données regroupées: 23 SIRET uniques identifiés
-2025-02-25 14:50:25 | INFO     | MainThread | Création de l'attestation pour SIRET: 12345678901234, Client: ACME SARL
-```
-
-## Développement
-
-### Bonnes pratiques
-
-Le code suit plusieurs bonnes pratiques pour assurer sa qualité :
-
-1. **Modularité** : Séparation des responsabilités en composants distincts
-2. **Type Hints** : Utilisation d'annotations de type pour améliorer la lisibilité
-3. **Gestion d'erreurs** : Traitement robuste des exceptions
-4. **Logging structuré** : Journalisation détaillée à plusieurs niveaux
-5. **Configuration centralisée** : Paramètres externalisés dans des fichiers YAML
-
-### Gestion des erreurs
-
-Le système de gestion d'erreurs comprend :
-
-- **Hiérarchie d'exceptions** : Exceptions spécialisées par type d'erreur
-- **Journalisation contextualisée** : Détails sur l'erreur et son contexte
-- **Récupération gracieuse** : Poursuite du traitement malgré les erreurs isolées
-- **Débogage facilité** : Informations détaillées pour identifier les problèmes
-
-### Extensibilité
-
-Pour étendre les fonctionnalités :
-
-1. **Personnalisation du formatage** : Modifier les paramètres dans la section `document` de la configuration
-2. **Ajout de nouvelles sources de données** : Étendre le module `data_processor.py`
-3. **Modèles d'attestation supplémentaires** : Créer de nouveaux templates dans `document_generator.py`
-4. **Rapports personnalisés** : Ajouter une fonctionnalité de rapport dans un nouveau module
-
-## Maintenance
-
-### Guide de dépannage
-
-**Erreur : "Fichier Excel non trouvé"**
-- **Cause** : Le fichier d'entrée n'existe pas ou n'est pas accessible
-- **Solution** : Vérifiez le chemin du fichier et les permissions d'accès
-
-**Erreur : "Colonne SIREN manquante"**
-- **Cause** : Le fichier Excel ne contient pas la colonne SIREN requise
-- **Solution** : Vérifiez la structure de votre fichier d'entrée et assurez-vous qu'il contient toutes les colonnes nécessaires
-
-**Erreur lors de la génération des attestations**
-- **Cause** : Problème lors de la création ou de l'enregistrement des documents Word
-- **Solution** : Vérifiez que le répertoire de sortie est accessible en écriture et que les chemins des ressources (logo, signature) sont corrects
-
-### Contact
-
-- **Auteur** : Mahamadou COULIBALY
-- **Email** : mahamadou.coulibaly@interaction-groupe.com
-- **Version** : 1.0.0
-- **Dernière mise à jour** : Février 2025
+| Module | Role |
+|---|---|
+| `config.py` | Config - chargement unique au demarrage, resolution des variables |
+| `main.py` | Orchestrateur - sequence les etapes, gere les parametres CLI |
+| `data_processor.py` | Processor - logique de transformation des donnees |
+| `document_generator.py` | Processor - creation des documents Word |
+| `pdf_converter.py` | Processor - conversion batch DOCX->PDF, instance COM unique |
 
 ---
 
-© 2025 Groupe Interaction - Tous droits réservés
+## Flux de traitement
+
+```
+Fichier Excel
+     |
+     v
+[1] Chargement           load_excel_data()
+     |
+     v
+[2] Nettoyage            clean_and_transform_data()
+     |  . Creation SIRET (SIREN + NIC, validation numerique)
+     |  . Formatage DATE_NAISSANCE -> str uniforme
+     |  . Conversion ETP_ANNUEL / NB_HEURES en float, NaN -> 0
+     |
+     v
+[3] Agregation           aggregate_data()
+     |  . groupby par toutes les colonnes cles
+     |  . sum(ETP_ANNUEL, NB_HEURES)
+     |  . ANNEE force en int
+     |
+     v
+[4] Filtrage             filter_data()
+     |  . Exclusion CODE_REGROUPEMENT = 'DIFFUS'
+     |
+     v
+[5] Enrichissement       add_processing_columns()
+     |  . Tri SIRET / NOM / PRENOM
+     |  . NOUVEAU_GROUPE, FIN_GROUPE
+     |
+     v
+[6] Sauvegarde CSV       save_processed_data()   -> data/processed/
+     |  . QUOTE_NONNUMERIC (symetrique lecture/ecriture)
+     |
+     v
+[7] Generation Word      generer_attestations_doeth()
+     |  . 1 document par SIRET unique
+     |  . Logo, en-tete client, references legales
+     |  . Tableau beneficiaires + total ETP
+     |  . Signature representant legal
+     |
+     v
+[8] Conversion PDF       convert_batch()          (si format != docx)
+     |  . Instance Word COM ouverte une seule fois pour le batch
+     |  . Fermeture garantie (context manager RAII)
+     |
+     v
+Attestations finales     -> data/output/
+```
+
+---
+
+## Format des donnees d'entree
+
+Le fichier Excel doit contenir les colonnes suivantes (noms exacts) :
+
+| Colonne | Type | Description |
+|---|---|---|
+| `CODE_REGROUPEMENT` | str | Code groupe (ex: `ADAPE01`, `DIFFUS`) |
+| `REGROUPEMENT` | str | Libelle du regroupement |
+| `SIREN` | int | Code SIREN 9 chiffres |
+| `NIC` | int | Code NIC 5 chiffres |
+| `NOM_CLIENT` | str | Raison sociale du client |
+| `ADRESSE_CLIENT` | str | Adresse postale |
+| `CP_CLIENT` | int | Code postal |
+| `VILLE_CLIENT` | str | Ville |
+| `APE` | str | Code APE |
+| `NOM` | str | Nom du beneficiaire |
+| `PRENOM` | str | Prenom du beneficiaire |
+| `DATE_NAISSANCE` | date | Format JJ/MM/AAAA |
+| `ANNEE` | int | Annee de declaration |
+| `QUALIFICATION` | str | Qualification du poste |
+| `ETP_MAJORE` | str | `oui` / `non` |
+| `ETP_ANNUEL` | float | ETP annuel du beneficiaire |
+| `NB_HEURES` | float | Nombre d'heures travaillees |
+
+**Regles de qualite appliquees automatiquement :**
+
+- `CODE_REGROUPEMENT = 'DIFFUS'` : lignes exclues silencieusement.
+- SIREN/NIC non numeriques (ex: `ST MALO`) : exclus avec WARNING dans les logs.
+- `ETP_ANNUEL` / `NB_HEURES` manquants : remplaces par `0`.
+- `DATE_NAISSANCE` non convertible : remplacee par une chaine vide.
+
+---
+
+## Developpement
+
+### Branches Git
+
+| Branche | Usage |
+|---|---|
+| `main` | Production stable - generation Word validee (`v1.0-word-stable`) |
+| `develop` | Developpement actif - export PDF + selection format |
+
+### Workflow
+
+```bash
+# Travailler sur develop
+git checkout develop
+
+# Fusionner et tagger une release sur main
+git checkout main
+git merge develop
+git tag v1.x-description
+git push origin main --tags
+```
+
+### Tests manuels sans IHM
+
+```bash
+# Pipeline complet
+uv run python main.py \
+  --input "data/input/fichier.xlsx" \
+  --sheet "Nom feuille" \
+  --format both \
+  --debug
+
+# Generation seule (CSV deja pret)
+uv run python main.py \
+  --skip-processing \
+  --csv-path "data/processed/processed_YYYYMMDD_HHMMSS.csv" \
+  --format pdf
+```
+
+---
+
+## Depannage
+
+**`'<' not supported between instances of 'int' and 'datetime.datetime'`**
+Colonne `DATE_NAISSANCE` : valeurs non converties restant en type `int` lors du groupby. Resolu par `.fillna('')` post-strftime dans `data_processor.py`.
+
+**`'float' object is not iterable` dans python-docx**
+Cellule contenant `NaN` (cellule Excel vide). Resolu par guard `val == val` dans `document_generator.py`.
+
+**SIRET invalide du type `00ST MALO9521Z`**
+SIREN non numerique zero-padde. Resolu par validation `str.isdigit()` dans `create_siret_column()`. Les lignes invalides sont exclues avec un WARNING.
+
+**Adresse client absente dans le Word genere**
+Cles `ADRESSE CLIENT` (espace) au lieu de `ADRESSE_CLIENT` (underscore). Resolu dans `add_client_header()`.
+
+**PDF non genere - `Impossible d'ouvrir Microsoft Word`**
+Microsoft Word doit etre installe sur le poste. La conversion PDF utilise l'automation COM Windows (`pywin32`), sans dependance tierce supplementaire.
